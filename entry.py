@@ -13,7 +13,12 @@ from random import sample
 import random
 
 # %%
-from utils.evaluate import best_f1_score_range, best_f1_score_point
+# from utils.evaluate import best_f1_score_range, best_f1_score_point
+from utils.evaluate import f1_score_with_point_adjust,f1_score_point
+
+
+
+
 
 # %%
 def setup_seed(seed):
@@ -43,12 +48,9 @@ def pre_train(data_paths):
     def prepare_data(data_path):
         data_df = pd.read_csv(data_path)
         raw_series = data_df['value'].to_numpy()
-
         raw_series = minmax_scale(raw_series)
-
         train_dataset = KAD_DisformerTrainSet(raw_series, win_len=20, seq_len=100)
         dataloader = DataLoader(train_dataset, batch_size=256, drop_last=False, shuffle=True)
-
         return dataloader
 
     def train(dataloader, model):
@@ -71,17 +73,13 @@ def pre_train(data_paths):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
             return model
         
         epoch_bar.set_description("Epoch")
         for epoch in epoch_bar:
             step_bar = tqdm(dataloader)
             model = model.to(device)
-
             model = train_one_epoch(step_bar)
-
-
 
     for data_path in tqdm(data_paths):
         print(f"Pre training dataset: {data_path}")
@@ -89,7 +87,6 @@ def pre_train(data_paths):
         dataloader = prepare_data(data_path)
         train(dataloader, model)
 
-    
     return model
     
 
@@ -203,19 +200,16 @@ def test(model, data_paths):
         y_labels = labels[-len(recons):]
         y_scores = minmax_scale(np.abs(recons - y_series))
 
-        f1_range = best_f1_score_range(y_labels, y_scores)
-        f1_point = best_f1_score_point(y_labels, y_scores)
+        # BUG: verify functional consistency
+        f1_range = f1_score_with_point_adjust(y_labels, y_scores)
+        f1_point = f1_score_point(y_labels, y_scores)
+
+        # f1_range = best_f1_score_range(y_labels, y_scores)
+        # f1_point = best_f1_score_point(y_labels, y_scores)
 
         res.append([f1_range, f1_point])
 
     return res
-
-# %%
-data_dir = "/root/data/train/"
-data_paths = [os.path.join(data_dir, i) for i in os.listdir(data_dir) if not i.startswith(".")]
-samples = sample(data_paths, 7)
-
-pre_train_paths, fine_tune_paths = samples[:5], samples[5:]
 
 def prepare_data(data_path, shuffle=False):
     data_df = pd.read_csv(data_path)
@@ -228,25 +222,33 @@ def prepare_data(data_path, shuffle=False):
 
     return dataloader, dataset
 
-his_datasets = [prepare_data(i, shuffle=True)[1] for i in pre_train_paths]
-his_dataset = ConcatDataset(his_datasets)
+if __name__ == '__main__':
+    #1: load dataset
+    data_dir = "/root/data/train/"
+    data_paths = [os.path.join(data_dir, i) for i in os.listdir(data_dir) if not i.startswith(".")]
+    samples = sample(data_paths, 7)
 
-his_dataloader = DataLoader(his_dataset, batch_size=256, drop_last=True, shuffle=True)
-test_dataloader1 = prepare_data(fine_tune_paths[0], shuffle=False)[0]
-test_dataloader2 = prepare_data(fine_tune_paths[1], shuffle=False)[0]
+    pre_train_paths, fine_tune_paths = samples[:5], samples[5:]
+
+    his_datasets = [prepare_data(i, shuffle=True)[1] for i in pre_train_paths]
+    his_dataset = ConcatDataset(his_datasets)
+
+    his_dataloader = DataLoader(his_dataset, batch_size=256, drop_last=True, shuffle=True)
+    test_dataloader1 = prepare_data(fine_tune_paths[0], shuffle=False)[0]
+    test_dataloader2 = prepare_data(fine_tune_paths[1], shuffle=False)[0]
 
 
-model = KAD_Disformer(N=0, d_model=20, layers=1)
-print("Pre-train result:")
-print(test(model, fine_tune_paths))
+    model = KAD_Disformer(N=0, d_model=20, layers=1)
+    print("Pre-train result:")
+    print(test(model, fine_tune_paths))
 
-print("Fine-tune results:")
-fine_tune(model, his_dataloader, test_dataloader1)
-print(test(model, fine_tune_paths[:1]))
+    print("Fine-tune results:")
+    fine_tune(model, his_dataloader, test_dataloader1)
+    print(test(model, fine_tune_paths[:1]))
 
-model.load_state_dict(torch.load("./saved_models/KAD_Disformer_sample.ptm"))
-fine_tune(model, his_dataloader, test_dataloader2)
-print(test(model, fine_tune_paths[1:]))
+    model.load_state_dict(torch.load("./saved_models/KAD_Disformer_sample.ptm"))
+    fine_tune(model, his_dataloader, test_dataloader2)
+    print(test(model, fine_tune_paths[1:]))
 
 
 
