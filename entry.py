@@ -178,11 +178,22 @@ def test(model, data_paths):
         reconstruct_ls = []
         device = 'cpu'
 
+        # print('@@@--->',next(iter(dataloader)))
+        # print(next(iter(dataloader))[0].shape)
+        # print(next(iter(dataloader))[1].shape)
+        # print(next(iter(dataloader))[2].shape)
+
         with torch.no_grad():
-            for step, (batch_x, _) in enumerate(tqdm(dataloader)):
+            for step, (batch_x, _, _) in enumerate(tqdm(dataloader)):
                 batch_x = batch_x.to(device)
                 reconstructed = model(batch_x)
                 reconstruct_ls.append(reconstructed.to('cpu').numpy()[:, -1, -1])
+
+        # with torch.no_grad():
+        #     for step, (batch_x, _) in enumerate(tqdm(dataloader)):
+        #         batch_x = batch_x.to(device)
+        #         reconstructed = model(batch_x)
+        #         reconstruct_ls.append(reconstructed.to('cpu').numpy()[:, -1, -1])
 
         return np.concatenate(reconstruct_ls)
 
@@ -224,11 +235,13 @@ def prepare_data(data_path, shuffle=False):
 
 if __name__ == '__main__':
     #1: load dataset
-    data_dir = "/root/data/train/"
+    data_dir = "/code/model/KAD-Disformer/data/KPI-Anomaly-Detection/Processed_dataset"
     data_paths = [os.path.join(data_dir, i) for i in os.listdir(data_dir) if not i.startswith(".")]
     samples = sample(data_paths, 7)
 
     pre_train_paths, fine_tune_paths = samples[:5], samples[5:]
+    # print(pre_train_paths)
+    # print(fine_tune_paths)
 
     his_datasets = [prepare_data(i, shuffle=True)[1] for i in pre_train_paths]
     his_dataset = ConcatDataset(his_datasets)
@@ -238,7 +251,8 @@ if __name__ == '__main__':
     test_dataloader2 = prepare_data(fine_tune_paths[1], shuffle=False)[0]
 
 
-    model = KAD_Disformer(N=0, d_model=20, layers=1)
+    model = KAD_Disformer(win_len=20,heads=5)
+    # model = KAD_Disformer(N=0, d_model=20, layers=1)
     print("Pre-train result:")
     print(test(model, fine_tune_paths))
 

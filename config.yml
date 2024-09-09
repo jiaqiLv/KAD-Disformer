@@ -1,0 +1,15 @@
+model:
+  model_name: vgg11
+  d_model: 20
+data:
+  data_path: /m/data/path
+training:
+  lr: 0.0005
+  device: cuda:0
+  batch_size: 16
+  epochs: 200
+  seq_len: 100
+  log_path: /code/PaperTools/Framework/LogSystem/log.log
+  alpha: 0.2
+inference:
+  device: cpu
