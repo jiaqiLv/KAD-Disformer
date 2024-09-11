@@ -240,8 +240,6 @@ if __name__ == '__main__':
     samples = sample(data_paths, 7)
 
     pre_train_paths, fine_tune_paths = samples[:5], samples[5:]
-    # print(pre_train_paths)
-    # print(fine_tune_paths)
 
     his_datasets = [prepare_data(i, shuffle=True)[1] for i in pre_train_paths]
     his_dataset = ConcatDataset(his_datasets)

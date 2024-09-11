@@ -140,6 +140,10 @@ def load_csvs(csv_path):
 
     return datasets
 
+class KAD_DisformerDataset(Dataset):
+    def __init__(self) -> None:
+        super().__init__()
+
 
 if __name__ == '__main__':
     import pandas as pd

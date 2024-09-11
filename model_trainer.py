@@ -1,7 +1,6 @@
-from ast import List
 from torch import optim
 import torch.nn as nn
-from typing import Union
+from typing import Union,List
 from torch.utils.data import DataLoader, ConcatDataset
 from tqdm import tqdm
 import copy
@@ -26,15 +25,33 @@ class KADTrainer():
                 meta_params.append(params)
         return meta_params
     
+    # def prtrain_step(self,model,train_data,criterion,optimizer,args):
+    #     for epoch in tqdm(range(args.training.epochs)):
+    #         for X,y in train_data:
+    #             print(X.shape,y.shape)
+    #             X = X.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
+    #             # y = y.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
+    #             model.zero_grad()
+    #             output = model(X)
+    #             print(output.shape)
+    #             loss = criterion(output,y)
+    #             optimizer.zero_grad()
+    #             loss.backward()
+    #             optimizer.step()
+
+    #         if epoch%10 == 0:
+    #             print(f'Epoch: {epoch}, Loss: {loss}')
+    #     return model
+    
     def prtrain_step(self,model,train_data,criterion,optimizer,args):
         for epoch in tqdm(range(args.training.epochs)):
-            for X,y in train_data:
-                X = X.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
-                y = y.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
-
+            for X_context,X_history,X_denoised in train_data:
+                # print(X_context.shape,X_history.shape,X_denoised.shape)
+                X_context = X_context.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
+                X_history = X_history.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
                 model.zero_grad()
-                output = model(X)
-                loss = criterion(output,y)
+                output = model(X_context)
+                loss = criterion(output,X_history)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()

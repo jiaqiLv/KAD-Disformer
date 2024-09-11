@@ -2,7 +2,7 @@ model:
   model_name: vgg11
   d_model: 20
 data:
-  data_path: /m/data/path
+  data_path: /code/model/KAD-Disformer/data/KPI-Anomaly-Detection/Processed_dataset
 training:
   lr: 0.0005
   device: cuda:0
