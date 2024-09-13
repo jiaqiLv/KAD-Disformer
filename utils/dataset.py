@@ -17,7 +17,9 @@ class UTSDataset(Dataset):
         self.win_len = win_len
         self.labels = labels
 
+        # print('seqs.shape:', seqs.shape)
         self.seqs = self.time_delay_embedding(seqs, win_len)
+        print('self.seqs.shape:', self.seqs.shape)
 
         if labels is not None:
             self.labels = self.time_delay_embedding_for_label(labels, win_len)
@@ -97,6 +99,13 @@ class KAD_DisformerTrainSet(Dataset):
         self.context_flow = UTSDataset(seqs, win_len, seq_len, labels)
         self.denoised_context = DenoisedUTSDataset(seqs, win_len, seq_len, labels)
         self.history_flow = UTSDatasetWithHistorySliding(seqs, win_len, seq_len, labels, seq_stride)
+        # data = next(iter(self.context_flow))
+        # print(data[0])
+        # data = next(iter(self.history_flow))
+        # print(data[0])
+        # print('len(self.context_flow):', len(self.context_flow))
+        # print('len(self.denoised_context):', len(self.denoised_context))
+        # print('len(self.context_flow):', len(self.context_flow))
 
     def __len__(self):
         return len(self.context_flow)
@@ -141,8 +150,21 @@ def load_csvs(csv_path):
     return datasets
 
 class KAD_DisformerDataset(Dataset):
-    def __init__(self) -> None:
+    def __init__(self,seqs,win_len,seq_len,labels,seq_stride=1) -> None:
         super().__init__()
+        self.seq_len = seq_len
+        self.win_len = win_len
+        self.seq_stride = seq_stride
+
+        self.context_flow = UTSDataset(seqs, win_len, seq_len, labels)
+        self.denoised_context = DenoisedUTSDataset(seqs, win_len, seq_len, labels)
+        self.history_flow = UTSDatasetWithHistorySliding(seqs, win_len, seq_len, labels, seq_stride)
+    
+    def __len__(self):
+        return len(self.context_flow)
+    
+    def __getitem__(self, index):
+        return self.context_flow[index][0], self.history_flow[index][0], self.denoised_context[index][0], self.context_flow[index][1]
 
 
 if __name__ == '__main__':

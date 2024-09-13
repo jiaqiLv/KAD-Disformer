@@ -1,9 +1,13 @@
+from sklearn.preprocessing import minmax_scale
 from torch import optim
+import torch
 import torch.nn as nn
 from typing import Union,List
 from torch.utils.data import DataLoader, ConcatDataset
 from tqdm import tqdm
 import copy
+import numpy as np
+from utils.evaluate import f1_score_with_point_adjust,f1_score_point
 
 class KADTrainer():
 
@@ -106,5 +110,26 @@ class KADTrainer():
         model = self.fine_tune_step(model,train_data,tuning_data,criterion,optimizer,args)
         return model
 
-    def test(self):
-        pass
+    def test(self,model:nn.Module,test_data:Union[DataLoader,List[DataLoader]],args):
+        reconstruct_seq = []
+        labels = []
+        raw_series = []
+        with torch.no_grad():
+            for X_context,X_history,X_denoised,y in test_data:
+                print(X_context.shape,X_history.shape,X_denoised.shape,y.shape)
+                X_context = X_context.to(args.training.device).view(-1,args.training.seq_len,args.model.d_model)
+                output = model(X_context)
+                raw_series.append(X_context.to('cpu').numpy()[:,-1,-1])
+                reconstruct_seq.append(output.to('cpu').numpy()[:,-1,-1])
+                labels.append(y.to('cpu').numpy())
+        raw_series = np.concatenate(raw_series)
+        reconstruct_seq = np.concatenate(reconstruct_seq)
+        labels = np.concatenate(labels)
+        print(raw_series.shape,reconstruct_seq.shape, labels.shape)
+        y_scores = minmax_scale(np.abs(reconstruct_seq-raw_series))
+        # BUG: verify functional consistency
+        f1_range = f1_score_with_point_adjust(labels, y_scores)
+        f1_point = f1_score_point(labels, y_scores)
+        print(f1_range)
+        print(f1_point)
+        return f1_range,f1_point

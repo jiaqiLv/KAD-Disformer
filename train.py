@@ -6,17 +6,19 @@ from sklearn.preprocessing import minmax_scale
 from torch.utils.data import DataLoader,ConcatDataset
 from os.path import join,exists
 from models.KAD_Disformer import KAD_Disformer
-from utils.dataset import KAD_DisformerTestSet,KAD_DisformerTrainSet,UTSDataset
+from utils.dataset import KAD_DisformerTestSet,KAD_DisformerTrainSet,KAD_DisformerDataset
 
 def prepare_data(data_path,args=None,pattern='pretrain',shuffle=True):
     data_df = pd.read_csv(data_path)
     raw_series = data_df['value'].to_numpy()
     labels = data_df['label'].to_numpy()
     raw_series = minmax_scale(raw_series)
+    print('len(raw_series):', len(raw_series))
     if pattern == 'pretrain' or pattern == 'fine_tune':
         dataset = KAD_DisformerTrainSet(raw_series,win_len=20,seq_len=100,labels=labels)
     elif pattern == 'test':
-        dataset = KAD_DisformerTestSet(raw_series,win_len=20,seq_len=100,labels=labels)
+        dataset = KAD_DisformerDataset(raw_series,win_len=20,seq_len=100,labels=labels)
+        # dataset = KAD_DisformerTestSet(raw_series,win_len=20,seq_len=100,labels=labels)
     else:
         raise ValueError('Unexpected Pattern.')
     dataloader = DataLoader(dataset=dataset,batch_size=256,drop_last=False,shuffle=shuffle)
@@ -37,7 +39,7 @@ def set_dataset(args,pattern='pretrain',shuffle=True):
     elif pattern == 'fine_tune':
         dataloader,dataset = prepare_data(join(data_dir,TEST_SET[0]),args=args,pattern='fine_tune')
     elif pattern == 'test':
-        pass
+        dataloader,dataset = prepare_data(join(data_dir,TEST_SET[1]),args=args,pattern='test',shuffle=False)
     else:
         raise ValueError('Unexpected Pattern.')
     return dataloader,dataset
@@ -48,6 +50,9 @@ if __name__ == '__main__':
     model = KAD_Disformer(win_len=20,heads=5)
     model = model.to(args.training.device)
     """Init DataLoader"""
-    pretrain_dataloader,_ = set_dataset(args=args,pattern='pretrain')
+    # pretrain_dataloader,_ = set_dataset(args=args,pattern='pretrain')
+    test_dataloader,_ = set_dataset(args=args,pattern='test')
     """Pretrain"""
-    model_trainer.pretrain(model,pretrain_dataloader,args)
+    # model_trainer.pretrain(model,pretrain_dataloader,args)
+    """Test"""
+    model_trainer.test(model,test_dataloader,args)
